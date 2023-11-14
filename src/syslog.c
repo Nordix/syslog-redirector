@@ -1,5 +1,32 @@
+/**
+ * This file is originally from musl libc.
+ *
+ * Copyright © 2005-2020 Rich Felker, et al.
+ * Copyright (c) 2023 OpenInfra Foundation Europe and others.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
 #include <stdarg.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <syslog.h>
@@ -9,16 +36,23 @@
 #include <pthread.h>
 #include <errno.h>
 #include <fcntl.h>
-#include "lock.h"
-#include "fork_impl.h"
+#include <stdlib.h>
 
-static volatile int lock[1];
+#include "lock.h"
+
+LOCK_INIT(lock)
+
+enum {
+	LOG_TYPE_UNIX = 1,
+	LOG_TYPE_FILE = 2
+};
+
 static char log_ident[32];
 static int log_opt;
 static int log_facility = LOG_USER;
 static int log_mask = 0xff;
 static int log_fd = -1;
-volatile int *const __syslog_lockptr = lock;
+static int log_type = LOG_TYPE_UNIX;
 
 int setlogmask(int maskpri)
 {
@@ -29,10 +63,7 @@ int setlogmask(int maskpri)
 	return ret;
 }
 
-static const struct {
-	short sun_family;
-	char sun_path[9];
-} log_addr = {
+static struct sockaddr_un log_addr = {
 	AF_UNIX,
 	"/dev/log"
 };
@@ -50,8 +81,27 @@ void closelog(void)
 
 static void __openlog()
 {
-	log_fd = socket(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0);
-	if (log_fd >= 0) connect(log_fd, (void *)&log_addr, sizeof log_addr);
+	char *path = getenv("SYSLOG_PATH");
+	char *file_path;
+
+	if (path) {
+		if (strncmp(path, "unix:", 5) == 0) {
+			strncpy(log_addr.sun_path, path + 5, sizeof log_addr.sun_path - 1);
+		} else if (strncmp(path, "file:", 5) == 0) {
+			file_path = path + 5;
+			log_type = LOG_TYPE_FILE;
+		} else {
+			file_path = path;
+			log_type = LOG_TYPE_FILE;
+		}
+	}
+
+	if (log_type == LOG_TYPE_UNIX) {
+		log_fd = socket(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0);
+		if (log_fd >= 0) connect(log_fd, (void *)&log_addr, sizeof log_addr);
+	} else {
+		log_fd = open(file_path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0644);
+	}
 }
 
 void openlog(const char *ident, int opt, int facility)
@@ -110,17 +160,22 @@ static void _vsyslog(int priority, const char *message, va_list ap)
 		if (l2 >= sizeof buf - l) l = sizeof buf - 1;
 		else l += l2;
 		if (buf[l-1] != '\n') buf[l++] = '\n';
-		if (send(log_fd, buf, l, 0) < 0 && (!is_lost_conn(errno)
-		    || connect(log_fd, (void *)&log_addr, sizeof log_addr) < 0
-		    || send(log_fd, buf, l, 0) < 0)
-		    && (log_opt & LOG_CONS)) {
-			fd = open("/dev/console", O_WRONLY|O_NOCTTY|O_CLOEXEC);
-			if (fd >= 0) {
-				dprintf(fd, "%.*s", l-hlen, buf+hlen);
-				close(fd);
+
+		if (log_type == LOG_TYPE_UNIX) {
+			if (send(log_fd, buf, l, 0) < 0 && (!is_lost_conn(errno)
+				|| connect(log_fd, (void *)&log_addr, sizeof log_addr) < 0
+				|| send(log_fd, buf, l, 0) < 0)
+				&& (log_opt & LOG_CONS)) {
+				fd = open("/dev/console", O_WRONLY|O_NOCTTY|O_CLOEXEC);
+				if (fd >= 0) {
+					dprintf(fd, "%.*s", l-hlen, buf+hlen);
+					close(fd);
+				}
 			}
+			if (log_opt & LOG_PERROR) dprintf(2, "%.*s", l-hlen, buf+hlen);
+		} else {
+			dprintf(log_fd, "%.*s", l-hlen, buf+hlen);
 		}
-		if (log_opt & LOG_PERROR) dprintf(2, "%.*s", l-hlen, buf+hlen);
 	}
 }
 
@@ -143,4 +198,4 @@ void syslog(int priority, const char *message, ...)
 	va_end(ap);
 }
 
-weak_alias(__vsyslog, vsyslog);
+void vsyslog(int priority, const char *message, va_list ap) __attribute__ ((weak, alias ("__vsyslog")));
