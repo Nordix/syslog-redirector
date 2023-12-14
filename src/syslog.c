@@ -197,3 +197,14 @@ void syslog(int priority, const char *message, ...) {
 
 void vsyslog(int priority, const char *message, va_list ap)
 	__attribute__((weak, alias("__vsyslog")));
+
+void __syslog_chk(int priority, int flag, const char *message, ...) {
+	va_list ap;
+	va_start(ap, message);
+	__vsyslog(priority, message, ap);
+	va_end(ap);
+}
+
+void __vsyslog_chk(int priority, int flag, const char *message, va_list ap) {
+	__vsyslog(priority, message, ap);
+}
