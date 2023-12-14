@@ -17,3 +17,6 @@ test: $(TARGET)
 clean:
 	rm -f $(TARGET)
 	$(MAKE) -C test clean
+
+clang-format:
+	for f in $(shell find . -name '*.c' -o -name '*.h'); do clang-format --verbose -i $$f; done

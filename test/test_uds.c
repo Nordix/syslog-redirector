@@ -21,7 +21,7 @@ int create_socket(char *path) {
 	};
 	strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
 
-	if (bind(uds_sock, (struct sockaddr *)&addr, sizeof(addr)) == -1){
+	if (bind(uds_sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
 		perror("bind");
 		return -1;
 	}
@@ -47,7 +47,8 @@ int main(int argc, char *argv[]) {
 	syslog(LOG_INFO, "test message");
 	closelog();
 
-	/* Receive the message that was sent using wrapped syslog() from the socket. */
+	/* Receive the message that was sent using wrapped syslog() from the socket.
+	 */
 	char buffer[1024];
 	int numbytes = recv(uds_sock, buffer, sizeof(buffer), 0);
 	if (numbytes == -1) {

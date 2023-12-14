@@ -11,19 +11,19 @@
 #define LOCK_H
 
 #define LOCK_INIT(x)                                                           \
-  static pthread_mutex_t x##_mutex = PTHREAD_MUTEX_INITIALIZER;                \
-  static pthread_once_t x##_once = PTHREAD_ONCE_INIT;                          \
-  static void x##_init(void) { pthread_mutex_init(&x##_mutex, NULL); }
+	static pthread_mutex_t x##_mutex = PTHREAD_MUTEX_INITIALIZER;              \
+	static pthread_once_t x##_once = PTHREAD_ONCE_INIT;                        \
+	static void x##_init(void) { pthread_mutex_init(&x##_mutex, NULL); }
 
 #define LOCK(x)                                                                \
-  do {                                                                         \
-    pthread_once(&x##_once, x##_init);                                         \
-    pthread_mutex_lock(&x##_mutex);                                            \
-  } while (0)
+	do {                                                                       \
+		pthread_once(&x##_once, x##_init);                                     \
+		pthread_mutex_lock(&x##_mutex);                                        \
+	} while (0)
 
 #define UNLOCK(x)                                                              \
-  do {                                                                         \
-    pthread_mutex_unlock(&x##_mutex);                                          \
-  } while (0)
+	do {                                                                       \
+		pthread_mutex_unlock(&x##_mutex);                                      \
+	} while (0)
 
 #endif
