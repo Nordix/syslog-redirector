@@ -1,7 +1,7 @@
 # syslog-redirector
 
 The project implements small LD_PRELOADable wrapper library that allows output of `syslog()` and `vsyslog()` calls to be redirected to any file or UNIX domain socket instead of the hardcoded path in the C library function.
-The library can be useful when running an applications in a container, where the application is not allowed to write to `/dev/log` directly and when it is not feasible to modify the application code itself.
+The library can be useful when running an applications in a container, where the application is not allowed to write to `/dev/log` directly or the container is not running syslog daemon, and when it is not feasible to modify the application code itself.
 
 The heavy lifting is done by `syslog.c` borrowed from [musl libc](https://www.musl-libc.org/).
 It is licensed under MIT license.
@@ -34,4 +34,10 @@ To build the library run:
 
 ```
 make
+```
+
+To execute tests run:
+
+```
+make test
 ```
