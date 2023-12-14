@@ -7,7 +7,7 @@
 int main(int argc, char *argv[]) {
 	printf("Running test_file...\n");
 
-    (void)unlink("file_syslog_test");
+	(void)unlink("file_syslog_test");
 
 	/* Set SYSLOG_PATH to use a file. */
 	setenv("SYSLOG_PATH", "file_syslog_test", 1);
@@ -21,13 +21,13 @@ int main(int argc, char *argv[]) {
 	char buffer[1024];
 	FILE *fp = fopen("file_syslog_test", "r");
 	if (fp == NULL) {
-        perror("fopen");
-        exit(EXIT_FAILURE);
+		perror("fopen");
+		exit(EXIT_FAILURE);
 	}
 
-    if (fgets(buffer, sizeof(buffer), fp) == NULL) {
-        perror("fgets");
-        exit(EXIT_FAILURE);
+	if (fgets(buffer, sizeof(buffer), fp) == NULL) {
+		perror("fgets");
+		exit(EXIT_FAILURE);
 	}
 
 	/* Verify the message. */
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 	(void)unlink("file_syslog_test");
 
 	/* Test verdict. */
-    if (found) {
+	if (found) {
 		printf("Success.\n");
 		exit(EXIT_SUCCESS);
 	} else {
