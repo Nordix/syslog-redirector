@@ -31,7 +31,6 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <time.h>
-#include <signal.h>
 #include <string.h>
 #include <pthread.h>
 #include <errno.h>
