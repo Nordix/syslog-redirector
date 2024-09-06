@@ -73,7 +73,7 @@ void closelog(void) {
 
 static void __openlog() {
 	char *path = getenv("SYSLOG_PATH");
-	char *file_path;
+	char *file_path = NULL;
 
 	if (path) {
 		if (strncmp(path, "unix:", 5) == 0) {
